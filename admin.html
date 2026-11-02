@@ -7,7 +7,7 @@
   <title>Admin | CAEZAR PERFUMES</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&family=Tajawal:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@400;500;600&family=Jost:wght@300;400;500&family=Tajawal:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="admin.css">
 </head>
@@ -60,6 +60,28 @@
     <section id="ordersSec" hidden aria-labelledby="oT" style="margin-top:3rem">
       <div class="a-head"><h1 id="oT">Orders</h1></div>
       <div class="table-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Customer</th><th>Address</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody id="orderRows"></tbody></table><p class="empty" id="noOrders" hidden>No orders yet.</p></div>
+    </section>
+
+    <section id="shipSec" aria-labelledby="sT" style="margin-top:3rem">
+      <div class="a-head">
+        <h1 id="sT">Shipping &amp; Delivery Rates</h1>
+        <div class="a-filters"><span class="muted" id="shipState" aria-live="polite"></span><button class="btn btn-gold btn-sm" id="shipSave" type="button" disabled>Save changes</button></div>
+      </div>
+      <div class="bulk" role="group" aria-label="Bulk update">
+        <label>Zone<select class="in" id="bZone"><option value="">All governorates</option></select></label>
+        <label>Flat fee (EGP)<input class="in" id="bFee" type="number" min="0" step="1" inputmode="numeric" placeholder="leave blank to keep"></label>
+        <label>Delivery window (EN)<input class="in" id="bWinEn" placeholder="e.g. 1–2 Days"></label>
+        <label>مدة التوصيل (عربي)<input class="in" id="bWinAr" dir="rtl" placeholder="مثال: ١–٢ يوم"></label>
+        <label>Status<select class="in" id="bActive"><option value="">Keep as is</option><option value="1">Activate</option><option value="0">Deactivate</option></select></label>
+        <button class="btn btn-ghost btn-sm" id="bApply" type="button">Apply</button>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl ship-tbl">
+          <thead><tr><th>Governorate</th><th>Zone</th><th>Fee (EGP)</th><th>Delivery window (EN / عربي)</th><th>Active</th></tr></thead>
+          <tbody id="shipRows"></tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:.85rem;margin-top:.8rem">Customers only see active governorates. Every governorate starts inactive at 0 EGP, so set your real fees before activating. While none are active, checkout skips the governorate step.</p>
     </section>
   </main>
 

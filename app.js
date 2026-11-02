@@ -74,7 +74,7 @@ const T = {
     added: "تمت الإضافة إلى السلة", cart_empty_toast: "أضف عطراً إلى السلة أولاً",
     home: "الرئيسية", qty: "الكمية", also: "قد يعجبك أيضاً", notfound: "المنتج غير موجود",
     perk1: "توصيل لجميع المحافظات", perk2: "تغليف فاخر جاهز للإهداء", perk3: "تأكيد الطلب عبر واتساب",
-    lang_btn: "EN", co_name: "الاسم", co_phone: "رقم الهاتف", co_addr: "العنوان بالتفصيل", order_no: "رقم الطلب", co_invalid: "من فضلك أدخل الاسم ورقم الهاتف والعنوان", co_fail: "تعذر إتمام الطلب، حاول مرة أخرى", soldout: "نفد المخزون", soldout_toast: "هذا المنتج غير متوفر حالياً",
+    lang_btn: "EN", gov_ph: "ابحث واختر المحافظة", gov_label: "المحافظة", gov_none: "لا توجد نتائج", gov_required: "اختر المحافظة أولاً", ship: "الشحن", subtotal: "المجموع الفرعي", wa_ship: "الشحن", co_name: "الاسم", co_phone: "رقم الهاتف", co_addr: "العنوان بالتفصيل", order_no: "رقم الطلب", co_invalid: "من فضلك أدخل الاسم ورقم الهاتف والعنوان", co_fail: "تعذر إتمام الطلب، حاول مرة أخرى", soldout: "نفد المخزون", soldout_toast: "هذا المنتج غير متوفر حالياً",
     wa_hello: "مرحباً CAEZAR PERFUMES 👋\nأود طلب المنتجات التالية:\n\n", wa_count: "العدد", wa_price: "السعر", wa_total: "إجمالي الطلب", wa_footer: "يرجى تأكيد الطلب وتحديد عنوان التسليم.",
     wa_single: (n, s, p) => `السلام عليكم، أريد طلب ${n} (${s}) بسعر ${p} جنيه.`,
     wa_quiz: (n) => `السلام عليكم، رشح لي الاختبار عطر ${n} وأريد الاستفسار عنه.`,
@@ -109,7 +109,7 @@ const T = {
     added: "Added to cart", cart_empty_toast: "Add a fragrance to your cart first",
     home: "Home", qty: "Quantity", also: "You may also like", notfound: "Product not found",
     perk1: "Delivery across Egypt", perk2: "Luxury gift-ready packaging", perk3: "Order confirmed via WhatsApp",
-    lang_btn: "عربي", co_name: "Full name", co_phone: "Phone number", co_addr: "Delivery address", order_no: "Order", co_invalid: "Please enter your name, phone and address", co_fail: "Could not place the order, please try again", soldout: "Sold out", soldout_toast: "This product is currently unavailable",
+    lang_btn: "عربي", gov_ph: "Search and choose a governorate", gov_label: "Governorate", gov_none: "No matches", gov_required: "Please choose a governorate", ship: "Shipping", subtotal: "Subtotal", wa_ship: "Shipping", co_name: "Full name", co_phone: "Phone number", co_addr: "Delivery address", order_no: "Order", co_invalid: "Please enter your name, phone and address", co_fail: "Could not place the order, please try again", soldout: "Sold out", soldout_toast: "This product is currently unavailable",
     wa_hello: "Hello CAEZAR PERFUMES 👋\nI'd like to order the following:\n\n", wa_count: "Qty", wa_price: "Price", wa_total: "Order total", wa_footer: "Please confirm the order and delivery address.",
     wa_single: (n, s, p) => `Hello, I'd like to order ${n} (${s}) for ${p} EGP.`,
     wa_quiz: (n) => `Hello, the scent quiz recommended ${n} and I'd like to know more.`,
@@ -129,6 +129,10 @@ const store = {
 };
 let lang = store.get("czLang", "ar");
 let cart = store.get("czCart", []);
+let SHIPPING = cloud ? [] : loadLocalShipping(); // governorate rates; cloud mode fills this from Supabase
+let govId = store.get("czGov", null);
+const activeGov = () => SHIPPING.filter((g) => g.active);
+const curGov = () => activeGov().find((g) => g.id === govId) || null;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const t = (k) => T[lang][k];
@@ -179,7 +183,12 @@ function buildShell() {
     <aside class="drawer" id="drawer" aria-label="Cart" aria-hidden="true">
       <header><h2 data-i18n="cart"></h2><button class="icon-btn" id="drawerClose" type="button" aria-label="Close">${ICON.close}</button></header>
       <div class="items" id="cartItems"></div>
-      <footer><div class="co" id="coFields" hidden><input id="coName" autocomplete="name" data-ph="co_name"><input id="coPhone" type="tel" autocomplete="tel" inputmode="tel" data-ph="co_phone"><textarea id="coAddr" rows="2" autocomplete="street-address" data-ph="co_addr"></textarea></div><div class="total"><span data-i18n="total"></span><b id="cartTotal"></b></div>
+      <footer><div class="co" id="coFields" hidden>
+        <div class="co-person" id="coPerson"><input id="coName" autocomplete="name" data-ph="co_name"><input id="coPhone" type="tel" autocomplete="tel" inputmode="tel" data-ph="co_phone"><textarea id="coAddr" rows="2" autocomplete="street-address" data-ph="co_addr"></textarea></div>
+        <div class="combo" id="govBox" hidden><label for="govInput" class="sr-only" data-i18n="gov_label"></label>
+          <input id="govInput" role="combobox" aria-expanded="false" aria-controls="govList" aria-autocomplete="list" autocomplete="off" data-ph="gov_ph">
+          <ul id="govList" role="listbox" hidden></ul><p class="gov-info" id="govInfo" aria-live="polite"></p></div></div>
+      <div class="sumrows" id="sumRows"></div><div class="total"><span data-i18n="total"></span><b id="cartTotal"></b></div>
         <button class="btn btn-wa" id="checkout" type="button">${ICON.wa.replace("<svg", '<svg width="18" height="18" fill="currentColor"')}<span data-i18n="checkout"></span></button></footer>
     </aside>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>`;
@@ -193,7 +202,7 @@ function buildShell() {
   $("#cartBtn").onclick = () => toggleDrawer(true);
   $("#drawerClose").onclick = $("#overlay").onclick = () => toggleDrawer(false);
   $("#checkout").onclick = checkout;
-  $("#coFields").hidden = !cloud;
+  initGov(); syncCheckout();
   addEventListener("keydown", (e) => { if (e.key === "Escape") toggleDrawer(false); });
 }
 
@@ -227,18 +236,72 @@ function renderCart() {
   if (productsReady) cart = cart.filter((l) => pById(l.id));
   $("#cartCount").textContent = cart.reduce((s, l) => s + l.qty, 0);
   const box = $("#cartItems");
-  if (!cart.length) { box.innerHTML = `<div class="empty">${t("empty")}</div>`; $("#cartTotal").textContent = money(0); return; }
+  if (!cart.length) { box.innerHTML = `<div class="empty">${t("empty")}</div>`; $("#sumRows").innerHTML = ""; $("#cartTotal").textContent = money(0); return; }
   let total = 0;
   box.innerHTML = cart.filter((l) => pById(l.id)).map((l) => {
     const p = pById(l.id); total += p.price * l.qty;
     return `<div class="line">${imgTag(p)}<div><h4>${p.name[lang]}</h4><small>${money(p.price)} × ${l.qty}</small></div>
       <div class="qty"><button type="button" data-d="-1" data-id="${p.id}" aria-label="-">−</button><output>${l.qty}</output><button type="button" data-d="1" data-id="${p.id}" aria-label="+">+</button></div></div>`;
   }).join("");
-  $("#cartTotal").textContent = money(total);
+  const hasGov = activeGov().length > 0, fee = curGov() ? curGov().fee : 0;
+  $("#sumRows").innerHTML = hasGov ? `<div><span>${t("subtotal")}</span><span>${money(total)}</span></div><div><span>${t("ship")}</span><span>${curGov() ? money(fee) : "—"}</span></div>` : "";
+  $("#cartTotal").textContent = money(total + fee);
   $$("#cartItems .qty button").forEach((b) => (b.onclick = () => changeQty(+b.dataset.id, +b.dataset.d)));
 }
+/* ---------- governorate combobox (searchable, keyboard accessible) ---------- */
+const norm = (x) => x.toLowerCase().replace(/[\u064B-\u065F]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").trim();
+function renderGovList(q = "") {
+  const n = norm(q), items = activeGov().filter((g) => !n || norm(g.ar).includes(n) || norm(g.en).includes(n));
+  $("#govList").innerHTML = items.length
+    ? items.map((g) => `<li role="option" id="gov-${g.id}" data-id="${g.id}" aria-selected="${g.id === govId}">${g[lang]}<small>${money(g.fee)}</small></li>`).join("")
+    : `<li class="none" role="presentation">${t("gov_none")}</li>`;
+  $("#govInput").removeAttribute("aria-activedescendant");
+}
+function openGov(open) {
+  $("#govList").hidden = !open; $("#govInput").setAttribute("aria-expanded", open);
+}
+function selectGov(id) {
+  govId = id; store.set("czGov", id); openGov(false); syncCheckout(); renderCart();
+}
+function govInfo() {
+  const g = curGov(), el = $("#govInfo");
+  const win = g ? (lang === "ar" ? g.winAr || g.winEn : g.winEn || g.winAr) : "";
+  el.textContent = g ? `${t("ship")}: ${money(g.fee)}${win ? " · " + win : ""}` : "";
+}
+function syncCheckout() {
+  const hasGov = activeGov().length > 0;
+  if (govId && !curGov()) { govId = null; store.set("czGov", null); }
+  $("#coFields").hidden = !(cloud || hasGov);
+  $("#coPerson").hidden = !cloud;
+  $("#govBox").hidden = !hasGov;
+  $("#govInput").value = curGov() ? curGov()[lang] : "";
+  govInfo();
+}
+function initGov() {
+  const input = $("#govInput"), list = $("#govList");
+  const options = () => $$("#govList [role=option]");
+  const move = (d) => {
+    const o = options(); if (!o.length) return;
+    let i = o.findIndex((x) => x.classList.contains("act")); o[i]?.classList.remove("act");
+    i = (i + d + o.length) % o.length; o[i].classList.add("act"); o[i].scrollIntoView({ block: "nearest" });
+    input.setAttribute("aria-activedescendant", o[i].id);
+  };
+  input.addEventListener("focus", () => { input.select(); renderGovList(); openGov(true); });
+  input.addEventListener("input", () => { renderGovList(input.value); openGov(true); });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); if (list.hidden) { renderGovList(input.value); openGov(true); } move(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+    else if (e.key === "Enter") { const a = $("#govList .act") || (options().length === 1 ? options()[0] : null); if (a) { e.preventDefault(); selectGov(+a.dataset.id); } }
+    else if (e.key === "Escape" && !list.hidden) { e.stopPropagation(); openGov(false); syncCheckout(); }
+  });
+  list.addEventListener("mousedown", (e) => { const li = e.target.closest("[role=option]"); if (li) { e.preventDefault(); selectGov(+li.dataset.id); } });
+  document.addEventListener("click", (e) => { if (!e.target.closest("#govBox") && !list.hidden) { openGov(false); syncCheckout(); } });
+}
+
 async function checkout() {
   if (!cart.length) return toast(t("cart_empty_toast"));
+  const hasGov = activeGov().length > 0;
+  if (hasGov && !curGov()) { $("#govInput").focus(); return toast(t("gov_required")); }
   let orderNo = null, win = null;
   if (cloud) {
     const name = $("#coName").value.trim(), phone = $("#coPhone").value.trim(), addr = $("#coAddr").value.trim();
@@ -246,9 +309,9 @@ async function checkout() {
     win = window.open("", "_blank"); // opened now so the popup blocker allows it after the network call
     if (win) win.opener = null;
     const btn = $("#checkout"); btn.disabled = true;
-    const { data, error } = await sb.rpc("place_order", { p_name: name, p_phone: phone, p_address: addr, p_items: cart.map((l) => ({ product_id: l.id, qty: l.qty })) });
+    const { data, error } = await sb.rpc("place_order", { p_name: name, p_phone: phone, p_address: addr, p_items: cart.map((l) => ({ product_id: l.id, qty: l.qty })), p_governorate: hasGov ? govId : null });
     btn.disabled = false;
-    if (error) { if (win) win.close(); return toast(/stock|unavailable/i.test(error.message) ? error.message : t("co_fail")); }
+    if (error) { if (win) win.close(); return toast(/stock|unavailable|governorate/i.test(error.message) ? error.message : t("co_fail")); }
     orderNo = data;
   }
   let total = 0, msg = t("wa_hello") + (orderNo ? `${t("order_no")} #${orderNo}\n\n` : "");
@@ -256,6 +319,7 @@ async function checkout() {
     const p = pById(l.id), sub = p.price * l.qty; total += sub;
     msg += `${i + 1}. *${p.name[lang]}* (${p.size[lang]})\n   ${t("wa_count")}: ${l.qty}\n   ${t("wa_price")}: ${sub} ${t("egp")}\n\n`;
   });
+  if (hasGov) { const g = curGov(); total += g.fee; msg += `${t("wa_ship")} (${g[lang]}): ${g.fee} ${t("egp")}\n\n`; }
   msg += `*${t("wa_total")}:* ${total} ${t("egp")}\n\n${t("wa_footer")}`;
   const url = `https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
   if (orderNo) { cart = []; saveCart(); toggleDrawer(false); toast(`${t("order_no")} #${orderNo}`); }
@@ -270,6 +334,7 @@ function setLang(l) {
   $$("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
   $("#langBtn").textContent = t("lang_btn");
   $$("[data-ph]").forEach((el) => (el.placeholder = t(el.dataset.ph)));
+  syncCheckout();
   renderCart();
   PAGE.render && PAGE.render();
   observeReveal();
@@ -412,6 +477,7 @@ document.addEventListener("DOMContentLoaded", () => {
   (document.body.dataset.page === "product" ? PAGE.product : PAGE.home)();
   setLang(lang);
   if (cloud) {
+    fetchShipping().catch(() => []).then((rows) => { SHIPPING = rows; syncCheckout(); renderCart(); });
     fetchProducts()
       .then((rows) => rows, () => DEFAULT_PRODUCTS.map(normalize)) // backend unreachable: show the built-in catalogue
       .then((rows) => { PRODUCTS.splice(0, PRODUCTS.length, ...rows); productsReady = true; renderCart(); PAGE.render(); observeReveal(); });

@@ -20,6 +20,23 @@ Then open `admin.html` and sign in. The page switches to Live mode. Orders place
 
 ---
 
+## 0b. Shipping rates by governorate (built, migration `002_shipping.sql`)
+
+**Schema:** table `governorates` (`id`, `name_en`, `name_ar`, `zone`, `shipping_fee_egp`, `delivery_window_en/ar`, `is_active`, `sort_order`). All 27 governorates are seeded **inactive at 0 EGP with no delivery window**: the real fees are your business decision, set them in the admin. Orders gained `governorate_id`, `subtotal_egp` and `shipping_egp`.
+
+**Security:** anyone can read **active** governorates; only admins can read inactive ones or write. `place_order(name, phone, address, items, governorate)` looks up the fee on the server, so a customer can never choose their own shipping price. If at least one governorate is active, an order without a valid active governorate is rejected. If none is active, checkout skips the step.
+
+**API (Supabase REST, equivalent to the endpoints you asked for):**
+
+| Purpose | Endpoint | Who |
+|---|---|---|
+| `GET /api/shipping-rates` | `GET /rest/v1/governorates?is_active=eq.true&select=id,name_en,name_ar,zone,shipping_fee_egp,delivery_window_en,delivery_window_ar&order=sort_order` | Public |
+| `PUT /api/admin/shipping-rates` | `POST /rest/v1/governorates` with header `Prefer: resolution=merge-duplicates` and a JSON array of rows (this is what `sb.from("governorates").upsert(rows)` sends) | Admin only (RLS) |
+
+**Frontend:** this project is plain HTML/CSS/JS (no React/Tailwind build), so the feature follows the same structure: a searchable, keyboard-accessible governorate combobox in the cart drawer (Arabic spelling variants like أ/ا and ة/ه match), live subtotal / shipping / total, and an admin "Shipping & Delivery Rates" screen with inline editing, zone bulk update, active switches and a Save button.
+
+---
+
 ## 1. Recommended stack
 
 **Supabase (PostgreSQL + Auth + Storage + Row Level Security).**

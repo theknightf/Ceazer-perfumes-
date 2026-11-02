@@ -272,14 +272,14 @@ $("#resetBtn").onclick = () => {
 /* ---------- orders (cloud mode) ---------- */
 const ORDER_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
 async function loadOrders() {
-  const { data, error } = await sb.from("orders").select("*, order_items(qty, unit_price_egp, products(name_en))").order("created_at", { ascending: false }).limit(100);
+  const { data, error } = await sb.from("orders").select("*, governorates(name_en), order_items(qty, unit_price_egp, products(name_en))").order("created_at", { ascending: false }).limit(100);
   if (error) return toast(failMsg(error));
   $("#orderRows").innerHTML = data.map((o) => `<tr>
     <td>#${o.id}<br><small class="muted">${esc(new Date(o.created_at).toLocaleString())}</small></td>
     <td>${esc(o.customer_name)}<br><small class="muted">${esc(o.phone)}</small></td>
-    <td>${esc(o.address)}</td>
+    <td>${esc(o.address)}${o.governorates ? `<br><small class="muted">${esc(o.governorates.name_en)}</small>` : ""}</td>
     <td>${o.order_items.map((i) => `${i.qty} × ${esc(i.products ? i.products.name_en : "?")}`).join("<br>")}</td>
-    <td>${egp(o.total_egp)}</td>
+    <td>${egp(o.total_egp)}${Number(o.shipping_egp) ? `<br><small class="muted">incl. ${egp(o.shipping_egp)} shipping</small>` : ""}</td>
     <td><select class="in" data-order="${o.id}" data-was="${o.status}" aria-label="Status of order ${o.id}">${ORDER_STATUSES.map((s) => `<option value="${s}"${s === o.status ? " selected" : ""}>${s}</option>`).join("")}</select></td></tr>`).join("");
   $("#noOrders").hidden = data.length > 0;
 }
@@ -294,6 +294,68 @@ $("#orderRows").addEventListener("change", async (e) => {
   } else toast("Order updated");
   sel.dataset.was = sel.value;
 });
+
+/* ---------- shipping rates ---------- */
+let ship = [];
+const shipDirty = new Set();
+const zoneLabel = (z) => ZONES[z].en;
+Object.entries(ZONES).forEach(([k, v]) => $("#bZone").insertAdjacentHTML("beforeend", `<option value="${k}">${v.en}</option>`));
+
+async function loadShip() {
+  try { ship = cloud ? await fetchShipping() : loadLocalShipping(); } catch (e) { ship = defaultShipping(); toast(failMsg(e)); }
+  shipDirty.clear(); renderShip();
+}
+function shipState() {
+  const n = shipDirty.size;
+  $("#shipSave").disabled = n === 0;
+  $("#shipState").textContent = n ? `${n} unsaved change${n > 1 ? "s" : ""}` : "All changes saved";
+}
+function renderShip() {
+  $("#shipRows").innerHTML = ship.map((g) => `<tr data-id="${g.id}" class="${shipDirty.has(g.id) ? "dirty" : ""}">
+    <td><b>${esc(g.en)}</b><br><small dir="rtl" class="muted">${esc(g.ar)}</small></td>
+    <td>${zoneLabel(g.zone)}</td>
+    <td><input class="in fee" type="number" min="0" step="1" inputmode="numeric" data-f="fee" value="${g.fee}" aria-label="Shipping fee for ${esc(g.en)} in EGP"></td>
+    <td><div class="win"><input class="in" data-f="winEn" value="${esc(g.winEn)}" placeholder="1–2 Days" aria-label="Delivery window for ${esc(g.en)} in English"><input class="in" dir="rtl" data-f="winAr" value="${esc(g.winAr)}" placeholder="١–٢ يوم" aria-label="مدة التوصيل إلى ${esc(g.ar)}"></div></td>
+    <td><label class="switch"><input type="checkbox" role="switch" data-f="active" ${g.active ? "checked" : ""} aria-label="Active: ${esc(g.en)}"><span></span></label></td></tr>`).join("");
+  shipState();
+}
+$("#shipRows").addEventListener("input", (e) => {
+  const el = e.target.closest("[data-f]"); if (!el) return;
+  const tr = el.closest("tr"), g = ship.find((x) => x.id === +tr.dataset.id), f = el.dataset.f;
+  g[f] = f === "active" ? el.checked : f === "fee" ? (el.value === "" ? 0 : Number(el.value)) : el.value;
+  shipDirty.add(g.id); tr.classList.add("dirty"); shipState();
+});
+$("#bApply").onclick = () => {
+  const zone = $("#bZone").value, feeRaw = $("#bFee").value.trim(), we = $("#bWinEn").value.trim(), wa = $("#bWinAr").value.trim(), act = $("#bActive").value;
+  if (feeRaw !== "" && !(Number(feeRaw) >= 0)) return toast("Fee must be 0 or more");
+  if (feeRaw === "" && !we && !wa && act === "") return toast("Enter a fee, a window or a status to apply");
+  const targets = ship.filter((g) => !zone || g.zone === zone);
+  targets.forEach((g) => {
+    if (feeRaw !== "") g.fee = Number(feeRaw);
+    if (we) g.winEn = we;
+    if (wa) g.winAr = wa;
+    if (act !== "") g.active = act === "1";
+    shipDirty.add(g.id);
+  });
+  renderShip(); toast(`Applied to ${targets.length} governorates. Click Save changes to keep them.`);
+};
+$("#shipSave").onclick = async () => {
+  const rows = ship.filter((g) => shipDirty.has(g.id));
+  if (rows.some((g) => !(g.fee >= 0))) return toast("Every fee must be 0 or more");
+  const freeActive = ship.filter((g) => g.active && g.fee === 0).length;
+  if (freeActive && !confirm(`${freeActive} active governorate${freeActive > 1 ? "s have" : " has"} a 0 EGP fee, so shipping will be free there. Save anyway?`)) return;
+  const btn = $("#shipSave"); btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    if (cloud) {
+      const { error } = await sb.from("governorates").upsert(rows.map((g) => ({ id: g.id, name_en: g.en, name_ar: g.ar, zone: g.zone, shipping_fee_egp: g.fee, delivery_window_en: g.winEn || null, delivery_window_ar: g.winAr || null, is_active: g.active, sort_order: g.id })));
+      if (error) throw error;
+    } else {
+      localStorage.setItem("czShipping", JSON.stringify(ship));
+    }
+    shipDirty.clear(); renderShip(); toast(`Shipping rates saved (${rows.length} updated)`);
+  } catch (e) { toast(failMsg(e)); }
+  finally { btn.textContent = "Save changes"; shipState(); }
+};
 
 /* ---------- login gate (cloud mode) ---------- */
 function showLogin(msg) {
@@ -336,6 +398,7 @@ async function start() {
     loadOrders();
   }
   await refresh();
+  await loadShip();
 }
 $("#signOut").onclick = async () => { await sb.auth.signOut(); location.reload(); };
 start();

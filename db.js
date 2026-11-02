@@ -34,3 +34,40 @@ async function fetchProducts() {
   if (error) throw error;
   return data.map(rowToProduct);
 }
+
+/* ---------- shipping: the 27 governorates (same ids and order as the `governorates` table) ---------- */
+const ZONES = {
+  greater_cairo: { en: "Greater Cairo", ar: "القاهرة الكبرى" },
+  alexandria: { en: "Alexandria", ar: "الإسكندرية" },
+  delta: { en: "Delta", ar: "الدلتا" },
+  canal: { en: "Canal", ar: "القناة" },
+  upper_egypt: { en: "Upper Egypt", ar: "الصعيد" },
+  frontier: { en: "Frontier & Red Sea", ar: "المحافظات الحدودية والبحر الأحمر" },
+};
+const GOVERNORATES = [
+  [1, "Cairo", "القاهرة", "greater_cairo"], [2, "Giza", "الجيزة", "greater_cairo"], [3, "Alexandria", "الإسكندرية", "alexandria"],
+  [4, "Qalyubia", "القليوبية", "greater_cairo"], [5, "Sharqia", "الشرقية", "delta"], [6, "Dakahlia", "الدقهلية", "delta"],
+  [7, "Gharbia", "الغربية", "delta"], [8, "Menofia", "المنوفية", "delta"], [9, "Damietta", "دمياط", "delta"],
+  [10, "Port Said", "بورسعيد", "canal"], [11, "Ismailia", "الإسماعيلية", "canal"], [12, "Suez", "السويس", "canal"],
+  [13, "Beheira", "البحيرة", "delta"], [14, "Kafr El Sheikh", "كفر الشيخ", "delta"], [15, "Matrouh", "مطروح", "frontier"],
+  [16, "North Sinai", "شمال سيناء", "frontier"], [17, "South Sinai", "جنوب سيناء", "frontier"], [18, "Faiyum", "الفيوم", "upper_egypt"],
+  [19, "Beni Suef", "بني سويف", "upper_egypt"], [20, "Minya", "المنيا", "upper_egypt"], [21, "Asyut", "أسيوط", "upper_egypt"],
+  [22, "Sohag", "سوهاج", "upper_egypt"], [23, "Qena", "قنا", "upper_egypt"], [24, "Luxor", "الأقصر", "upper_egypt"],
+  [25, "Aswan", "أسوان", "upper_egypt"], [26, "Red Sea", "البحر الأحمر", "frontier"], [27, "New Valley", "الوادي الجديد", "frontier"],
+].map(([id, en, ar, zone]) => ({ id, en, ar, zone }));
+
+// Fees and delivery windows are never pre-filled: every governorate starts inactive at 0 EGP.
+const defaultShipping = () => GOVERNORATES.map((g) => ({ ...g, fee: 0, winEn: "", winAr: "", active: false }));
+
+async function fetchShipping() {
+  const { data, error } = await sb.from("governorates").select("*").order("sort_order");
+  if (error) throw error;
+  return data.map((r) => ({ id: r.id, en: r.name_en, ar: r.name_ar, zone: r.zone, fee: Number(r.shipping_fee_egp), winEn: r.delivery_window_en || "", winAr: r.delivery_window_ar || "", active: r.is_active }));
+}
+function loadLocalShipping() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("czShipping") || "null");
+    if (Array.isArray(saved)) return defaultShipping().map((d) => ({ ...d, ...(saved.find((s) => s.id === d.id) || {}) }));
+  } catch { /* use defaults */ }
+  return defaultShipping();
+}

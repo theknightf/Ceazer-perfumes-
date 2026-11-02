@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin | CAEZAR PERFUMES</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&family=Tajawal:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin">
+  <header class="a-top">
+    <div class="a-wrap a-bar">
+      <a class="brand" href="admin.html"><span><b>CAEZAR</b><small>ADMIN</small></span></a>
+      <div class="a-tools">
+        <a class="btn btn-ghost btn-sm" href="index.html" target="_blank" rel="noopener">View store</a>
+        <button class="btn btn-ghost btn-sm" id="signOut" type="button" hidden>Sign out</button>
+        <button class="btn btn-gold btn-sm" id="newBtn" type="button">+ Add product</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="a-wrap a-main">
+    <div class="demo-note" id="modeNote" role="note">
+      <b>Preview mode.</b> Products are saved in this browser only (localStorage), so changes show on this device's storefront instantly but are not shared. This page has no login yet. See <code>BACKEND.md</code> for the real database, auth and storage setup.
+    </div>
+
+    <section class="stats" id="stats" aria-label="Inventory summary"></section>
+
+    <section aria-labelledby="pT">
+      <div class="a-head">
+        <h1 id="pT">Products</h1>
+        <div class="a-filters">
+          <label class="sr-only" for="q">Search</label>
+          <input id="q" class="in" type="search" placeholder="Search products">
+          <label class="sr-only" for="fs">Status</label>
+          <select id="fs" class="in">
+            <option value="">All statuses</option><option value="published">Published</option><option value="draft">Draft</option><option value="out_of_stock">Out of stock</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Product</th><th>Scent</th><th>Volume</th><th>Price</th><th>Stock</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p class="empty" id="none" hidden>No products match.</p>
+      </div>
+      <div class="a-foot">
+        <button class="btn btn-ghost btn-sm" id="exportBtn" type="button">Export JSON</button>
+        <label class="btn btn-ghost btn-sm" for="importFile">Import JSON</label>
+        <input id="importFile" type="file" accept="application/json" hidden>
+        <button class="btn btn-ghost btn-sm danger" id="resetBtn" type="button">Reset to defaults</button>
+      </div>
+    </section>
+
+    <section id="ordersSec" hidden aria-labelledby="oT" style="margin-top:3rem">
+      <div class="a-head"><h1 id="oT">Orders</h1></div>
+      <div class="table-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Customer</th><th>Address</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody id="orderRows"></tbody></table><p class="empty" id="noOrders" hidden>No orders yet.</p></div>
+    </section>
+  </main>
+
+  <div class="overlay" id="ov"></div>
+  <aside class="editor" id="editor" aria-hidden="true" aria-labelledby="edT">
+    <form id="form" novalidate>
+      <header><h2 id="edT">Add product</h2><button type="button" class="icon-btn" id="closeBtn" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+      <div class="ed-body">
+        <fieldset>
+          <legend>Basics</legend>
+          <div class="two">
+            <label>Name (English)<input class="in" id="nameEn" required></label>
+            <label>الاسم (عربي)<input class="in" id="nameAr" dir="rtl"></label>
+          </div>
+          <div class="two">
+            <label>Scent type<input class="in" id="scent" list="scents" placeholder="e.g. Oriental, Woody"><datalist id="scents"><option>Oriental</option><option>Woody</option><option>Fresh</option><option>Spicy</option><option>Floral</option><option>Aquatic</option><option>Leather</option><option>Oud</option></datalist></label>
+            <label>Status<select class="in" id="status"><option value="published">Published</option><option value="draft">Draft</option><option value="out_of_stock">Out of stock</option></select></label>
+          </div>
+          <div class="two">
+            <label>Description (English)<textarea class="in" id="descEn" rows="3"></textarea></label>
+            <label>الوصف (عربي)<textarea class="in" id="descAr" rows="3" dir="rtl"></textarea></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Size, price &amp; stock</legend>
+          <div class="three">
+            <label>Volume (ml)<input class="in" id="volume" type="number" min="0" step="1" inputmode="numeric"></label>
+            <label>Price (EGP)<input class="in" id="price" type="number" min="0" step="1" inputmode="numeric" required></label>
+            <label>Stock count<input class="in" id="stock" type="number" min="0" step="1" inputmode="numeric" placeholder="blank = not tracked"></label>
+          </div>
+          <label>Size label for sets <span class="hint">(optional, overrides volume, e.g. 3 × 50 ml)</span><input class="in" id="sizeLabel"></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Fragrance notes <span class="hint">separate notes with commas</span></legend>
+          <div class="notes-ed">
+            <div><b>Top</b><input class="in" id="topEn" placeholder="English"><input class="in" id="topAr" placeholder="عربي" dir="rtl"></div>
+            <div><b>Heart</b><input class="in" id="heartEn" placeholder="English"><input class="in" id="heartAr" placeholder="عربي" dir="rtl"></div>
+            <div><b>Base</b><input class="in" id="baseEn" placeholder="English"><input class="in" id="baseAr" placeholder="عربي" dir="rtl"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Images <span class="hint">first image is the cover</span></legend>
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload images">
+            <p><b>Drop images here</b> or click to browse</p>
+            <small>JPG, PNG or WebP. Resized to 900 px automatically. Up to 6.</small>
+            <input id="files" type="file" accept="image/*" multiple hidden>
+          </div>
+          <div class="gal" id="gal"></div>
+        </fieldset>
+        <p class="err" id="err" role="alert" hidden></p>
+      </div>
+      <footer><button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button><button type="submit" class="btn btn-gold">Save product</button></footer>
+    </form>
+  </aside>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

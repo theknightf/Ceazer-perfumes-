@@ -2,7 +2,7 @@
 const PHONE = "201108077464";
 const FALLBACK_IMG = "images/hero.webp";
 
-const PRODUCTS = [
+const DEFAULT_PRODUCTS = [
   { id: 1, price: 250, img: "images/p1.png",
     name: { ar: "عطر Caezar Red", en: "Caezar Red" },
     size: { ar: "50 مل", en: "50 ml" },
@@ -35,21 +35,35 @@ const PRODUCTS = [
     notes: { top: { ar: ["تفاح", "بهارات"], en: ["Apple", "Spices"] }, heart: { ar: ["زعفران", "ورد"], en: ["Saffron", "Rose"] }, base: { ar: ["عنبر", "جلد"], en: ["Amber", "Leather"] } } },
 ];
 
+/* Products come from the admin dashboard (localStorage) when present, else the defaults above.
+   stock: null = not tracked. status: published | draft | out_of_stock. */
+function normalize(p) {
+  return { scent: "", stock: null, status: "published", ...p, images: p.images && p.images.length ? p.images : [p.img] };
+}
+function loadProducts() {
+  try { const raw = localStorage.getItem("czProducts"); if (raw) return JSON.parse(raw).map(normalize); } catch { /* fall through */ }
+  return DEFAULT_PRODUCTS.map(normalize);
+}
+const PRODUCTS = cloud ? [] : loadProducts(); // cloud mode fills this from Supabase after load
+let productsReady = !cloud;
+const isSoldOut = (p) => p.status === "out_of_stock" || p.stock === 0;
+const live = () => PRODUCTS.filter((p) => p.status !== "draft");
+
 const T = {
   ar: {
     nav_collection: "التشكيلة", nav_notes: "هرم العطر", nav_finder: "اختر عطرك", nav_story: "قصتنا",
-    hero_sub: "PERFUMES", hero_tag: "القوة في كل قطرة", hero_copy: "عطور فاخرة بأعلى تركيز من الزيوت العطرية، ثبات يدوم وفوحان يفرض حضورك.",
+    hero_sub: "PERFUMES", hero_tag: "القــوة في كــل قطــرة", hero_copy: "عطور فاخرة بأعلى تركيز من الزيوت العطرية، ثبات يدوم وفوحان يفرض حضورك.",
     cta_explore: "اكتشف التشكيلة", cta_wa: "اطلب عبر واتساب",
     marquee: ["Extrait de Parfum", "50 مل", "100 مل", "مجموعات الهدايا", "القوة في كل قطرة"],
-    col_eyebrow: "التشكيلة", col_title: "اختر عطرك أو مجموعتك", col_lead: "من الزجاجة الواحدة إلى المجموعات الملكية، كل عطر بتوقيع CAEZAR.",
+    col_eyebrow: "التشكيلة", col_title: "اخـتر عطـرك أو مجمـوعتك", col_lead: "من الزجاجة الواحدة إلى المجموعات الملكية، كل عطر بتوقيع CAEZAR.",
     add: "أضف للسلة", view: "التفاصيل", order_wa: "اطلب واتساب", currency: "ج.م", egp: "جنيه",
-    notes_eyebrow: "هرم العطر", notes_title: "طبقات الرائحة", notes_lead: "اختر العطر ثم المس كل طبقة لتعرف مكوناتها.",
+    notes_eyebrow: "هرم العطر", notes_title: "طبـقات الرائـحة", notes_lead: "اختر العطر ثم المس كل طبقة لتعرف مكوناتها.",
     top: "القمة", heart: "القلب", base: "القاعدة",
     top_hint: "أول انطباع، يظهر في الدقائق الأولى.", heart_hint: "شخصية العطر، تظهر بعد دقائق وتستمر ساعات.", base_hint: "الأثر الأخير، يبقى على الجلد لساعات طويلة.",
     sample: "مكونات تجريبية: سيتم استبدالها بالمكونات الفعلية",
     quiz_eyebrow: "اختر عطرك", quiz_title: "ما العطر المناسب لك؟", quiz_lead: "أربعة أسئلة سريعة وسنرشح لك العطر الأنسب.",
     quiz_start: "ابدأ الاختبار", quiz_again: "أعد الاختبار", quiz_result: "ترشيحنا لك",
-    story_eyebrow: "قصتنا", story_title: "القوة في كل قطرة",
+    story_eyebrow: "قصتنا", story_title: "القــوة في كــل قطــرة",
     story_p1: "CAEZAR علامة عطور رجالية مستوحاة من الهيبة والأناقة. كل زجاجة مصممة لتبقى في الذاكرة.",
     story_p2: "نختار الزيوت العطرية بعناية ونقدمها في تغليف يليق بالإهداء.",
     st1: "تركيز Extrait", st2: "أحجام", st3: "توصيل للباب",
@@ -60,7 +74,7 @@ const T = {
     added: "تمت الإضافة إلى السلة", cart_empty_toast: "أضف عطراً إلى السلة أولاً",
     home: "الرئيسية", qty: "الكمية", also: "قد يعجبك أيضاً", notfound: "المنتج غير موجود",
     perk1: "توصيل لجميع المحافظات", perk2: "تغليف فاخر جاهز للإهداء", perk3: "تأكيد الطلب عبر واتساب",
-    lang_btn: "EN",
+    lang_btn: "EN", co_name: "الاسم", co_phone: "رقم الهاتف", co_addr: "العنوان بالتفصيل", order_no: "رقم الطلب", co_invalid: "من فضلك أدخل الاسم ورقم الهاتف والعنوان", co_fail: "تعذر إتمام الطلب، حاول مرة أخرى", soldout: "نفد المخزون", soldout_toast: "هذا المنتج غير متوفر حالياً",
     wa_hello: "مرحباً CAEZAR PERFUMES 👋\nأود طلب المنتجات التالية:\n\n", wa_count: "العدد", wa_price: "السعر", wa_total: "إجمالي الطلب", wa_footer: "يرجى تأكيد الطلب وتحديد عنوان التسليم.",
     wa_single: (n, s, p) => `السلام عليكم، أريد طلب ${n} (${s}) بسعر ${p} جنيه.`,
     wa_quiz: (n) => `السلام عليكم، رشح لي الاختبار عطر ${n} وأريد الاستفسار عنه.`,
@@ -95,7 +109,7 @@ const T = {
     added: "Added to cart", cart_empty_toast: "Add a fragrance to your cart first",
     home: "Home", qty: "Quantity", also: "You may also like", notfound: "Product not found",
     perk1: "Delivery across Egypt", perk2: "Luxury gift-ready packaging", perk3: "Order confirmed via WhatsApp",
-    lang_btn: "عربي",
+    lang_btn: "عربي", co_name: "Full name", co_phone: "Phone number", co_addr: "Delivery address", order_no: "Order", co_invalid: "Please enter your name, phone and address", co_fail: "Could not place the order, please try again", soldout: "Sold out", soldout_toast: "This product is currently unavailable",
     wa_hello: "Hello CAEZAR PERFUMES 👋\nI'd like to order the following:\n\n", wa_count: "Qty", wa_price: "Price", wa_total: "Order total", wa_footer: "Please confirm the order and delivery address.",
     wa_single: (n, s, p) => `Hello, I'd like to order ${n} (${s}) for ${p} EGP.`,
     wa_quiz: (n) => `Hello, the scent quiz recommended ${n} and I'd like to know more.`,
@@ -120,7 +134,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const t = (k) => T[lang][k];
 const pById = (id) => PRODUCTS.find((p) => p.id === +id);
 const money = (n) => `${n.toLocaleString("en-US")} ${t("egp")}`;
-const imgTag = (p, cls = "", alt = "") => `<img src="${p.img}" alt="${alt || p.name[lang]}" class="${cls}" loading="lazy" onerror="this.onerror=null;this.src='${FALLBACK_IMG}'">`;
+const imgTag = (p, cls = "", alt = "") => `<img src="${(p.images && p.images[0]) || p.img}" alt="${alt || p.name[lang]}" class="${cls}" loading="lazy" onerror="this.onerror=null;this.src='${FALLBACK_IMG}'">`;
 
 const MONO = `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="#e8c9a0" stroke-width="1"/><path d="M12 14h13l-9 12h13M10 22l14-12" fill="none" stroke="#e8c9a0" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const ICON = {
@@ -165,7 +179,7 @@ function buildShell() {
     <aside class="drawer" id="drawer" aria-label="Cart" aria-hidden="true">
       <header><h2 data-i18n="cart"></h2><button class="icon-btn" id="drawerClose" type="button" aria-label="Close">${ICON.close}</button></header>
       <div class="items" id="cartItems"></div>
-      <footer><div class="total"><span data-i18n="total"></span><b id="cartTotal"></b></div>
+      <footer><div class="co" id="coFields" hidden><input id="coName" autocomplete="name" data-ph="co_name"><input id="coPhone" type="tel" autocomplete="tel" inputmode="tel" data-ph="co_phone"><textarea id="coAddr" rows="2" autocomplete="street-address" data-ph="co_addr"></textarea></div><div class="total"><span data-i18n="total"></span><b id="cartTotal"></b></div>
         <button class="btn btn-wa" id="checkout" type="button">${ICON.wa.replace("<svg", '<svg width="18" height="18" fill="currentColor"')}<span data-i18n="checkout"></span></button></footer>
     </aside>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>`;
@@ -179,6 +193,7 @@ function buildShell() {
   $("#cartBtn").onclick = () => toggleDrawer(true);
   $("#drawerClose").onclick = $("#overlay").onclick = () => toggleDrawer(false);
   $("#checkout").onclick = checkout;
+  $("#coFields").hidden = !cloud;
   addEventListener("keydown", (e) => { if (e.key === "Escape") toggleDrawer(false); });
 }
 
@@ -197,6 +212,8 @@ function toast(msg) {
 /* ---------- cart ---------- */
 function saveCart() { store.set("czCart", cart); renderCart(); }
 function addToCart(id, n = 1) {
+  const prod = pById(id);
+  if (!prod || isSoldOut(prod)) return toast(t("soldout_toast"));
   const line = cart.find((l) => l.id === id);
   line ? (line.qty += n) : cart.push({ id, qty: n });
   saveCart(); toast(`${t("added")}: ${pById(id).name[lang]}`);
@@ -207,11 +224,12 @@ function changeQty(id, d) {
   saveCart();
 }
 function renderCart() {
+  if (productsReady) cart = cart.filter((l) => pById(l.id));
   $("#cartCount").textContent = cart.reduce((s, l) => s + l.qty, 0);
   const box = $("#cartItems");
   if (!cart.length) { box.innerHTML = `<div class="empty">${t("empty")}</div>`; $("#cartTotal").textContent = money(0); return; }
   let total = 0;
-  box.innerHTML = cart.map((l) => {
+  box.innerHTML = cart.filter((l) => pById(l.id)).map((l) => {
     const p = pById(l.id); total += p.price * l.qty;
     return `<div class="line">${imgTag(p)}<div><h4>${p.name[lang]}</h4><small>${money(p.price)} × ${l.qty}</small></div>
       <div class="qty"><button type="button" data-d="-1" data-id="${p.id}" aria-label="-">−</button><output>${l.qty}</output><button type="button" data-d="1" data-id="${p.id}" aria-label="+">+</button></div></div>`;
@@ -219,15 +237,29 @@ function renderCart() {
   $("#cartTotal").textContent = money(total);
   $$("#cartItems .qty button").forEach((b) => (b.onclick = () => changeQty(+b.dataset.id, +b.dataset.d)));
 }
-function checkout() {
+async function checkout() {
   if (!cart.length) return toast(t("cart_empty_toast"));
-  let total = 0, msg = t("wa_hello");
+  let orderNo = null, win = null;
+  if (cloud) {
+    const name = $("#coName").value.trim(), phone = $("#coPhone").value.trim(), addr = $("#coAddr").value.trim();
+    if (name.length < 2 || !/^[0-9+ ()-]{8,20}$/.test(phone) || addr.length < 6) return toast(t("co_invalid"));
+    win = window.open("", "_blank"); // opened now so the popup blocker allows it after the network call
+    if (win) win.opener = null;
+    const btn = $("#checkout"); btn.disabled = true;
+    const { data, error } = await sb.rpc("place_order", { p_name: name, p_phone: phone, p_address: addr, p_items: cart.map((l) => ({ product_id: l.id, qty: l.qty })) });
+    btn.disabled = false;
+    if (error) { if (win) win.close(); return toast(/stock|unavailable/i.test(error.message) ? error.message : t("co_fail")); }
+    orderNo = data;
+  }
+  let total = 0, msg = t("wa_hello") + (orderNo ? `${t("order_no")} #${orderNo}\n\n` : "");
   cart.forEach((l, i) => {
     const p = pById(l.id), sub = p.price * l.qty; total += sub;
     msg += `${i + 1}. *${p.name[lang]}* (${p.size[lang]})\n   ${t("wa_count")}: ${l.qty}\n   ${t("wa_price")}: ${sub} ${t("egp")}\n\n`;
   });
   msg += `*${t("wa_total")}:* ${total} ${t("egp")}\n\n${t("wa_footer")}`;
-  window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
+  const url = `https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`;
+  if (orderNo) { cart = []; saveCart(); toggleDrawer(false); toast(`${t("order_no")} #${orderNo}`); }
+  win ? (win.location = url) : window.open(url, "_blank", "noopener");
 }
 const waLink = (text) => `https://wa.me/${PHONE}?text=${encodeURIComponent(text)}`;
 
@@ -237,6 +269,7 @@ function setLang(l) {
   document.documentElement.lang = l; document.documentElement.dir = l === "ar" ? "rtl" : "ltr";
   $$("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
   $("#langBtn").textContent = t("lang_btn");
+  $$("[data-ph]").forEach((el) => (el.placeholder = t(el.dataset.ph)));
   renderCart();
   PAGE.render && PAGE.render();
   observeReveal();
@@ -270,12 +303,12 @@ function wirePyramid(root, getId) {
 /* ---------- product card ---------- */
 function cardHTML(p) {
   return `<article class="card reveal">
-    <a class="media" href="product.html?id=${p.id}" aria-label="${p.name[lang]}">${imgTag(p)}<span class="chip">${p.badge[lang]}</span></a>
+    <a class="media" href="product.html?id=${p.id}" aria-label="${p.name[lang]}">${imgTag(p)}<span class="chip">${isSoldOut(p) ? t("soldout") : p.badge[lang]}</span></a>
     <div class="body"><h3><a href="product.html?id=${p.id}">${p.name[lang]}</a></h3><span class="size">${p.size[lang]}</span>
       <p class="desc">${p.desc[lang]}</p>
       <div class="row"><span class="price">${p.price.toLocaleString("en-US")}<small>${t("egp")}</small></span></div>
       <div class="actions">
-        <button class="btn btn-ghost btn-sm" type="button" data-add="${p.id}">${t("add")}</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-add="${p.id}"${isSoldOut(p) ? " disabled" : ""}>${t("add")}</button>
         <a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="${waLink(T[lang].wa_single(p.name[lang], p.size[lang], p.price))}">${t("order_wa")}</a>
       </div></div></article>`;
 }
@@ -285,13 +318,14 @@ function wireAdd(root = document) { $$("[data-add]", root).forEach((b) => (b.onc
 const PAGE = {};
 
 PAGE.home = () => {
-  let noteId = 1, qi = -1, scores = {};
+  let noteId = null, qi = -1, scores = {};
   const marquee = () => { const items = T[lang].marquee.map((m) => `<span>${m}</span>`).join(""); $("#marqueeTrack").innerHTML = items + items; };
   const renderQuiz = () => {
     const box = $("#quizBox"), qs = T[lang].quiz;
     if (qi === -1) { box.innerHTML = `<p class="center"><button class="btn btn-gold" id="qStart" type="button">${t("quiz_start")}</button></p>`; $("#qStart").onclick = () => { qi = 0; scores = {}; renderQuiz(); }; return; }
     if (qi >= qs.length) {
-      const best = +Object.entries(scores).sort((a, b) => b[1] - a[1])[0]?.[0] || 1, p = pById(best);
+      const ok = live().filter((x) => !isSoldOut(x)).map((x) => x.id);
+      const best = +Object.entries(scores).filter(([k]) => ok.includes(+k)).sort((a, b) => b[1] - a[1])[0]?.[0] || ok[0] || live()[0].id, p = pById(best);
       box.innerHTML = `<div class="progress"><i style="width:100%"></i></div><div class="result">${imgTag(p)}<div>
         <span class="eyebrow">${t("quiz_result")}</span><h3>${p.name[lang]}</h3><div class="price">${money(p.price)}</div><p class="lead">${p.desc[lang]}</p>
         <div class="cta-row"><button class="btn btn-gold btn-sm" type="button" id="qAdd">${t("add")}</button>
@@ -305,9 +339,12 @@ PAGE.home = () => {
     $$(".opt", box).forEach((b) => (b.onclick = () => { Object.entries(q.o[+b.dataset.i][1]).forEach(([k, v]) => (scores[k] = (scores[k] || 0) + v)); qi++; renderQuiz(); }));
   };
   PAGE.render = () => {
+    if (!productsReady) return;
+    if (noteId == null || !pById(noteId)) noteId = live()[0] ? live()[0].id : null;
+    if (noteId == null) return;
     marquee();
-    $("#grid").innerHTML = PRODUCTS.map(cardHTML).join(""); wireAdd($("#grid"));
-    $("#tabs").innerHTML = PRODUCTS.map((p) => `<button class="tab" role="tab" type="button" data-id="${p.id}" aria-selected="${p.id === noteId}">${p.name[lang]}</button>`).join("");
+    $("#grid").innerHTML = live().map(cardHTML).join(""); wireAdd($("#grid"));
+    $("#tabs").innerHTML = live().map((p) => `<button class="tab" role="tab" type="button" data-id="${p.id}" aria-selected="${p.id === noteId}">${p.name[lang]}</button>`).join("");
     $$("#tabs .tab").forEach((b) => (b.onclick = () => { noteId = +b.dataset.id; PAGE.render(); }));
     $("#pyramidBox").innerHTML = pyramidHTML(noteId) + "";
     wirePyramid($("#notesRoot"), () => noteId);
@@ -329,22 +366,23 @@ PAGE.product = () => {
   const id = +new URLSearchParams(location.search).get("id") || 1;
   let qty = 1;
   PAGE.render = () => {
+    if (!productsReady) return;
     const p = pById(id), root = $("#pdp");
-    if (!p) { root.innerHTML = `<div class="wrap center section"><h1 class="h2">${t("notfound")}</h1><a class="btn btn-gold" href="index.html">${t("home")}</a></div>`; return; }
+    if (!p || p.status === "draft") { root.innerHTML = `<div class="wrap center section"><h1 class="h2">${t("notfound")}</h1><a class="btn btn-gold" href="index.html">${t("home")}</a></div>`; return; }
     document.title = `${p.name[lang]} | CAEZAR PERFUMES`;
-    const others = PRODUCTS.filter((x) => x.id !== id).slice(0, 3);
+    const others = live().filter((x) => x.id !== id).slice(0, 3);
     root.innerHTML = `<div class="wrap">
       <nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">${t("home")}</a> / <a href="index.html#collection">${t("nav_collection")}</a> / ${p.name[lang]}</nav>
       <div class="pdp-grid">
-        <div class="gallery"><div class="zoom" id="zoom">${imgTag(p, "", p.name[lang]).replace('loading="lazy"', "")}</div></div>
+        <div class="gallery"><div class="zoom" id="zoom">${imgTag(p, "", p.name[lang]).replace('loading="lazy"', "")}</div>${p.images.length > 1 ? `<div class="thumbs">${p.images.map((u, i) => `<button type="button" data-i="${i}" aria-label="Image ${i + 1}"><img src="${u}" alt=""></button>`).join("")}</div>` : ""}</div>
         <div>
-          <span class="eyebrow">${p.badge[lang]} · ${p.size[lang]}</span>
+          <span class="eyebrow">${isSoldOut(p) ? t("soldout") : p.badge[lang]} · ${p.size[lang]}${p.scent ? " · " + p.scent : ""}</span>
           <h1>${p.name[lang]}</h1><div class="rule"></div>
           <span class="price">${p.price.toLocaleString("en-US")}<small>${t("egp")}</small></span>
           <p class="lead">${p.desc[lang]}</p>
           <div class="buy">
             <div class="qty" aria-label="${t("qty")}"><button type="button" id="minus" aria-label="-">−</button><output id="qv">${qty}</output><button type="button" id="plus" aria-label="+">+</button></div>
-            <button class="btn btn-gold" type="button" id="addBtn">${t("add")}</button>
+            <button class="btn btn-gold" type="button" id="addBtn"${isSoldOut(p) ? " disabled" : ""}>${t("add")}</button>
             <a class="btn btn-wa" id="waBtn" target="_blank" rel="noopener" href="#">${t("order_wa")}</a>
           </div>
           <ul class="perks"><li>${t("perk1")}</li><li>${t("perk2")}</li><li>${t("perk3")}</li></ul>
@@ -363,12 +401,19 @@ PAGE.product = () => {
     const z = $("#zoom"), zi = $("img", z);
     z.onmousemove = (e) => { const r = z.getBoundingClientRect(); zi.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`; zi.style.transform = "scale(1.7)"; };
     z.onmouseleave = () => (zi.style.transform = "");
+    $$(".thumbs button", root).forEach((b) => (b.onclick = () => (zi.src = p.images[+b.dataset.i])));
   };
 };
 
 /* ---------- boot ---------- */
 document.addEventListener("DOMContentLoaded", () => {
+  if (!$("#site-header")) return; // admin page reuses this file for data only
   buildShell();
   (document.body.dataset.page === "product" ? PAGE.product : PAGE.home)();
   setLang(lang);
+  if (cloud) {
+    fetchProducts()
+      .then((rows) => rows, () => DEFAULT_PRODUCTS.map(normalize)) // backend unreachable: show the built-in catalogue
+      .then((rows) => { PRODUCTS.splice(0, PRODUCTS.length, ...rows); productsReady = true; renderCart(); PAGE.render(); observeReveal(); });
+  }
 });
